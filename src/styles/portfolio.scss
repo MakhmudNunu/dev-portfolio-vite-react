@@ -868,6 +868,17 @@ html, body, #root {
     }
   }
 
+  &__error {
+    margin-top: 0.75rem;
+    padding: 0.75rem 1rem;
+    font-size: 0.85rem;
+    color: #fca5a5;
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    border-radius: 8px;
+    line-height: 1.5;
+  }
+
   &__metrics {
     margin-bottom: 2.5rem;
   }
