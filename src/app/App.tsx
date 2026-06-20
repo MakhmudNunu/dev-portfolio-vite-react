@@ -245,10 +245,8 @@ export default function App() {
           </div>
 
           <h1 className="hero__title">
-            Создаю цифровые
-            <br />
-            решения, которые
-            <span className="hero__title-gradient"> приводят к результату.</span>
+           Цифровые решения
+            <span className="hero__title-gradient"> для вашего результата.</span>
           </h1>
 
           <p className="hero__sub">
