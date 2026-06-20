@@ -113,7 +113,7 @@ function scrollTo(id: string) {
 
 // ─── COMPONENT ───────────────────────────────────────────────────────────────
 export default function App() {
-  const API_BASE = import.meta.env.VITE_API_BASE || "https://твой-бэкенд-на-render.onrender.com";
+  const API_BASE = import.meta.env.VITE_API_BASE || "";
 
   const [form, setForm] = useState({ name: "", email: "", phone: "", message: "" });
   const [loading, setLoading] = useState(false);
@@ -121,17 +121,45 @@ export default function App() {
   const [aiReply, setAiReply] = useState<string | null>(null);
   const [metrics, setMetrics] = useState<any>(null);
 
+  function validateForm(): string | null {
+    if (form.name.trim().length < 2) return "Имя должно содержать минимум 2 символа.";
+    if (form.name.trim().length > 50) return "Имя не должно превышать 50 символов.";
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(form.email.trim())) return "Введите корректный email.";
+
+    if (form.phone.trim().length < 5) return "Телефон должен содержать минимум 5 символов.";
+    if (form.phone.trim().length > 20) return "Телефон не должен превышать 20 символов.";
+
+    if (form.message.trim().length < 10) return "Сообщение должно содержать минимум 10 символов.";
+    if (form.message.trim().length > 1000) return "Сообщение не должно превышать 1000 символов.";
+
+    return null;
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+
+    const validationError = validateForm();
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
+    if (!API_BASE) {
+      setError("Ошибка конфигурации: URL бэкенда не задан.");
+      return;
+    }
+
     setLoading(true);
 
     try {
       const payload = {
-        name: form.name,
-        email: form.email,
-        phone: form.phone,
-        comment: form.message,
+        name: form.name.trim(),
+        email: form.email.trim(),
+        phone: form.phone.trim(),
+        comment: form.message.trim(),
       };
 
       const res = await fetch(`${API_BASE}/api/contact/`, {
@@ -144,33 +172,36 @@ export default function App() {
         const data = await res.json();
         setAiReply(data.ai_reply || "Спасибо — ваше сообщение принято.");
         setForm({ name: "", email: "", phone: "", message: "" });
-        // refresh metrics after successful submission
         fetchMetrics();
       } else if (res.status === 422) {
         const err = await res.json();
-        setError(err.detail ? JSON.stringify(err.detail) : "Ошибка валидации данных.");
+        if (Array.isArray(err.detail)) {
+          const messages = err.detail.map((d: any) => d.msg || d.message || JSON.stringify(d));
+          setError(messages.join("; "));
+        } else {
+          setError(err.detail || "Ошибка валидации данных.");
+        }
       } else if (res.status === 429) {
         setError("Слишком много запросов — попробуйте позже.");
       } else {
-        const errText = await res.text();
-        setError(`Ошибка сервера: ${res.status} ${errText}`);
+        setError(`Ошибка сервера (${res.status}). Попробуйте позже.`);
       }
-    } catch (err: any) {
-      setError(err.message || "Сетевая ошибка при отправке формы.");
+    } catch {
+      setError("Не удалось связаться с сервером. Проверьте подключение к интернету.");
     } finally {
       setLoading(false);
     }
   }
 
   async function fetchMetrics() {
+    if (!API_BASE) return;
     try {
       const res = await fetch(`${API_BASE}/api/metrics`);
       if (!res.ok) return;
       const data = await res.json();
       setMetrics(data);
-    } catch (err) {
-      // ignore metrics errors silently for now
-      console.warn("Metrics fetch failed", err);
+    } catch {
+      // metrics fetch is non-critical
     }
   }
 
@@ -449,6 +480,8 @@ export default function App() {
                       placeholder="Иван Иванов"
                       value={form.name}
                       onChange={(e) => setForm({ ...form, name: e.target.value })}
+                      minLength={2}
+                      maxLength={50}
                       required
                     />
                   </div>
@@ -456,10 +489,13 @@ export default function App() {
                     <label className="contact__label">Телефон</label>
                     <input
                       className="contact__input"
-                      type="text"
+                      type="tel"
                       placeholder="+7 (999) 000-00-00"
                       value={form.phone}
                       onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                      minLength={5}
+                      maxLength={20}
+                      required
                     />
                   </div>
                 </div>
@@ -484,11 +520,13 @@ export default function App() {
                     placeholder="Расскажите о проекте — бюджет, сроки и цель..."
                     value={form.message}
                     onChange={(e) => setForm({ ...form, message: e.target.value })}
+                    minLength={10}
+                    maxLength={1000}
                     required
                   />
                 </div>
 
-                {error && <div className="mt-3 text-sm text-red-400">{error}</div>}
+                {error && <div className="contact__error">{error}</div>}
 
                 <button
                   className="contact__submit"
